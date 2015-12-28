@@ -18,33 +18,32 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
 test data: 
 
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
-After downloading the files, the training and test data can be obtained as follows:
+After downloading the files, the training and testing datasets can be obtained:
 ```{r}
 raw_data<-read.table("pml-training.csv",header = TRUE, sep = ",", na.strings = c("NA", "#DIV/0!"))
 finalTestData<-read.table("pml-testing.csv",header = TRUE, sep = ",", na.strings = c("NA", "#DIV/0!"))
 ```
-Then we investigate the number of samples and columns of the available data as:
+Next,we investigate the number of samples and columns of the available data as:
 ```{r}
 dim(raw_data)
 ```
-So the training data includes 19622 samples with 160 parameters. The parameter to be estimated is the "classe" which, as demonstrated below can belong to one of the follwoing five categories:
+So the training data includes 19622 samples with 160 parameters. The parameter to be estimated is the "classe" which, as demonstrated below, can belong to one of the follwoing five categories:
 ```{r}
 table(raw_data$classe)
 ```
 Cleaning the Data
 ----------------------------------------------------------------------------------------
-Several  parameters include many NA values which can not be employed for building the models, furthermore, the first seven parameters do not include valuable information for creating the model. Using the following lines, the metioned useless data is removed.
-
+Several  parameters include many NA values which should be removed, furthermore, the first seven parameters do not include valuable information for creating the model. Hence, the columns with mroe than 90% of NA values together with the first seven columns are eliminated.
 ```{r}
 is_na_result =is.na(raw_data)
-removedColumns = which(colSums(is_na_result) > 13000)
+removedColumns = which(colSums(is_na_result) >0.9*dim(raw_data)[1])
 clean_data1 = raw_data[, -removedColumns]
 clean_data = clean_data1[, -c(1:7)]
 dim(clean_data)
 ```
 Diving the raw data
 ----------------------------------------------------------------------------------------
-Before going further, we should divide the available raw data into training and testing categories, as also demonstrated in the class, we can do so using the following commands
+Now we have a clean dataset with 19622 samples and 53 columns.Before going further, we should divide the available raw data into training and testing (cross validation) categories:
 ```{r}
 library(caret)
 inTrain = createDataPartition(y=raw_data$classe, p=0.7, list=FALSE)
@@ -54,11 +53,26 @@ dim(training);dim(testing);
 ```
 Building the Model
 ----------------------------------------------------------------------------------------
-Before going further, we should divide the available raw data into training and testing categories, as also demonstrated in the class, we can do so using the following commands
+In this step we build the model using random forests: 
 ```{r}
-library(caret)
-inTrain = createDataPartition(y=raw_data$classe, p=0.7, list=FALSE)
-training = clean_data[inTrain,]
-testing = clean_data[-inTrain,]
-dim(training);dim(testing);
+library(randomForest)
+fittedModel = train(classe~., method="rf", data=training)
 ```
+Evlauting the Model
+----------------------------------------------------------------------------------------
+Using the trained model, we can now predict the parameter "classe" for the testing(cross validation)data set:
+```{r}
+predictions<-predict(fittedModel, testing)
+mean(predictions==testing$classe)
+```
+The accuracy of the results can be determined using the confusionMatrix, comapring the predicted values and the real values of the objective parameter in the testing dataset:
+```{r}
+confusionMatrix(predictions, testing$classe)
+```
+An acceptable specificty and sensitivty can be observed for all of the classes. Finally, In order to predict the result of the final testing dataset:
+```{r}
+predictions_Finaltesting<-predict(fittedModel, finalTestData)
+result<-as.character(predictions_Finaltesting)
+```
+Following vector demonstrates the obtained results:
+[B A B A A E D B A A B C B A E E A B B B]

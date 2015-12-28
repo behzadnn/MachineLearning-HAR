@@ -18,9 +18,21 @@ testing = clean_data[-inTrain,]
 dim(training);dim(testing);
 library(randomForest)
 set.seed(555)
-modFit<-train(classe ~. ,method="rf", data=training)
-print(modFit)
-
+fittedModel<-train(classe ~. ,method="rf", data=training)
+print(fittedModel)
+predictions<-predict(fittedModel, testing)
 confusionMatrix(predictions, testing$classe)
+correctPrediction<-predictions==testing$classe
+predictions_Finaltesting<-predict(fittedModel, finalTestData)
+result<-as.character(predictions_Finaltesting)
+setwd("D:/Google Drive/Coursera MAchine learning/MachineLearning-HAR/Results")
 
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(result)
 #B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 

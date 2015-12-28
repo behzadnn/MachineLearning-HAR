@@ -77,13 +77,13 @@ img {
 <p>Both the testing and the training data can be downloaded from the following links training data:</p>
 <p><a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a></p>
 <p>test data:</p>
-<p><a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a> After downloading the files, the training and test data can be obtained as follows:</p>
+<p><a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a> After downloading the files, the training and testing datasets can be obtained:</p>
 <pre class="r"><code>raw_data&lt;-read.table(&quot;pml-training.csv&quot;,header = TRUE, sep = &quot;,&quot;, na.strings = c(&quot;NA&quot;, &quot;#DIV/0!&quot;))
 finalTestData&lt;-read.table(&quot;pml-testing.csv&quot;,header = TRUE, sep = &quot;,&quot;, na.strings = c(&quot;NA&quot;, &quot;#DIV/0!&quot;))</code></pre>
-<p>Then we investigate the number of samples and columns of the available data as:</p>
+<p>Next,we investigate the number of samples and columns of the available data as:</p>
 <pre class="r"><code>dim(raw_data)</code></pre>
 <pre><code>## [1] 19622   160</code></pre>
-<p>So the training data includes 19622 samples with 160 parameters. The parameter to be estimated is the “classe” which, as demonstrated below can belong to one of the follwoing five categories:</p>
+<p>So the training data includes 19622 samples with 160 parameters. The parameter to be estimated is the “classe” which, as demonstrated below, can belong to one of the follwoing five categories:</p>
 <pre class="r"><code>table(raw_data$classe)</code></pre>
 <pre><code>## 
 ##    A    B    C    D    E 
@@ -91,17 +91,17 @@ finalTestData&lt;-read.table(&quot;pml-testing.csv&quot;,header = TRUE, sep = &q
 </div>
 <div id="cleaning-the-data" class="section level2">
 <h2>Cleaning the Data</h2>
-<p>Several parameters include many NA values which can not be employed for building the models, furthermore, the first seven parameters do not include valuable information for creating the model. Using the following lines, the metioned useless data is removed.</p>
+<p>Several parameters include many NA values which should be removed, furthermore, the first seven parameters do not include valuable information for creating the model. Hence, the columns with mroe than 90% of NA values together with the first seven columns are eliminated.</p>
 <pre class="r"><code>is_na_result =is.na(raw_data)
-removedColumns = which(colSums(is_na_result) &gt; 13000)
+removedColumns = which(colSums(is_na_result) &gt;0.9*dim(raw_data)[1])
 clean_data1 = raw_data[, -removedColumns]
-dim(clean_data1)</code></pre>
-<pre><code>## [1] 19622    60</code></pre>
-<pre class="r"><code>clean_data = clean_data1[, -c(1:7)]</code></pre>
+clean_data = clean_data1[, -c(1:7)]
+dim(clean_data)</code></pre>
+<pre><code>## [1] 19622    53</code></pre>
 </div>
 <div id="diving-the-raw-data" class="section level2">
 <h2>Diving the raw data</h2>
-<p>Before going further, we should divide the available raw data into training and testing categories, as also demonstrated in the class, we can do so using the following commands</p>
+<p>Now we have a clean dataset with 19622 samples and 53 columns.Before going further, we should divide the available raw data into training and testing (cross validation) categories:</p>
 <pre class="r"><code>library(caret)</code></pre>
 <pre><code>## Warning: package 'caret' was built under R version 3.2.3</code></pre>
 <pre><code>## Loading required package: lattice</code></pre>
@@ -113,7 +113,59 @@ testing = clean_data[-inTrain,]
 dim(training);dim(testing);</code></pre>
 <pre><code>## [1] 13737    53</code></pre>
 <pre><code>## [1] 5885   53</code></pre>
-<p>Note that the <code>echo = FALSE</code> parameter was added to the code chunk to prevent printing of the R code that generated the plot.</p>
+</div>
+<div id="building-the-model" class="section level2">
+<h2>Building the Model</h2>
+<p>In this step we build the model using random forests:</p>
+<pre class="r"><code>library(randomForest)</code></pre>
+<pre><code>## Warning: package 'randomForest' was built under R version 3.2.3</code></pre>
+<pre><code>## randomForest 4.6-12
+## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre class="r"><code>fittedModel = train(classe~., method=&quot;rf&quot;, data=training)</code></pre>
+</div>
+<div id="evlauting-the-model" class="section level2">
+<h2>Evlauting the Model</h2>
+<p>Using the trained model, we can now predict the parameter “classe” for the testing(cross validation)data set:</p>
+<pre class="r"><code>predictions&lt;-predict(fittedModel, testing)
+mean(predictions==testing$classe)</code></pre>
+<pre><code>## [1] 0.9921835</code></pre>
+<p>The accuracy of the results can be determined using the confusionMatrix, comapring the predicted values and the real values of the objective parameter in the testing dataset:</p>
+<pre class="r"><code>confusionMatrix(predictions, testing$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1673    8    0    0    0
+##          B    1 1125   14    0    0
+##          C    0    6 1011   14    0
+##          D    0    0    1  948    0
+##          E    0    0    0    2 1082
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9922          
+##                  95% CI : (0.9896, 0.9943)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9901          
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9994   0.9877   0.9854   0.9834   1.0000
+## Specificity            0.9981   0.9968   0.9959   0.9998   0.9996
+## Pos Pred Value         0.9952   0.9868   0.9806   0.9989   0.9982
+## Neg Pred Value         0.9998   0.9970   0.9969   0.9968   1.0000
+## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
+## Detection Rate         0.2843   0.1912   0.1718   0.1611   0.1839
+## Detection Prevalence   0.2856   0.1937   0.1752   0.1613   0.1842
+## Balanced Accuracy      0.9988   0.9923   0.9906   0.9916   0.9998</code></pre>
+<p>An acceptable specificty and sensitivty can be observed for all of the classes. Finally, In order to predict the result of the final testing dataset:</p>
+<pre class="r"><code>predictions_Finaltesting&lt;-predict(fittedModel, finalTestData)
+result&lt;-as.character(predictions_Finaltesting)</code></pre>
+<p>Following vector demonstrates the obtained results: [B A B A A E D B A A B C B A E E A B B B]</p>
 </div>
 
 
